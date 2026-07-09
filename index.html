@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Retcon Flow</title>
 
-    <link rel="manifest" href="./manifest.json">
+    <link rel="manifest" href="./manifest.json?v=3">
     <meta name="theme-color" content="#0F1720">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Retcon Flow">
@@ -207,119 +207,148 @@
     </div>
 
     <script>
-      const CONFIG = window.RETCON_FLOW_CONFIG || {};
-      const STORAGE_KEY = "retconFlowAppUrl";
+  const CONFIG = window.RETCON_FLOW_CONFIG || {};
+  const STORAGE_KEY = "retconFlowAppUrl";
 
-      function getSavedAppUrl() {
-        const savedUrl = localStorage.getItem(STORAGE_KEY);
-        const defaultUrl = CONFIG.defaultAppUrl || "";
+  function getLauncherMode() {
+    const params = new URLSearchParams(window.location.search);
 
-        return String(savedUrl || defaultUrl || "").trim();
-      }
+    if (params.get("install") === "1") {
+      return "install";
+    }
 
-      function setStatus(message) {
-        document.getElementById("status").textContent = message;
-      }
+    if (params.get("launch") === "1") {
+      return "launch";
+    }
 
-      function getOpenUrl(baseUrl) {
-        const url = String(baseUrl || "").trim();
+    return "normal";
+  }
 
-        if (!url) {
-          return "";
-        }
+  function getSavedAppUrl() {
+    const savedUrl = localStorage.getItem(STORAGE_KEY);
+    const defaultUrl = CONFIG.defaultAppUrl || "";
 
-        const separator = url.indexOf("?") === -1 ? "?" : "&";
-        const version = encodeURIComponent(CONFIG.launcherVersion || "dev");
-        const cacheBust = Date.now();
+    return String(savedUrl || defaultUrl || "").trim();
+  }
 
-        return url + separator + "rf_launcher=" + version + "&rf_t=" + cacheBust;
-      }
+  function setStatus(message) {
+    document.getElementById("status").textContent = message;
+  }
 
-      function openRetconFlow() {
-        const appUrl = getSavedAppUrl();
+  function getOpenUrl(baseUrl) {
+    const url = String(baseUrl || "").trim();
 
-        if (!appUrl) {
-          setStatus("Paste your Retcon Flow app link first.");
-          document.getElementById("setupPanel").classList.add("active");
-          document.getElementById("appUrlInput").focus();
-          return;
-        }
+    if (!url) {
+      return "";
+    }
 
-        if (appUrl.indexOf("/exec") === -1) {
-          setStatus("That does not look like a published /exec Web App URL.");
-          document.getElementById("setupPanel").classList.add("active");
-          return;
-        }
+    const separator = url.indexOf("?") === -1 ? "?" : "&";
+    const version = encodeURIComponent(CONFIG.launcherVersion || "dev");
+    const cacheBust = Date.now();
 
-        setStatus("Opening Retcon Flow...");
-        window.location.href = getOpenUrl(appUrl);
-      }
+    return url + separator + "rf_launcher=" + version + "&rf_t=" + cacheBust;
+  }
 
-      function toggleSetup() {
-        const panel = document.getElementById("setupPanel");
-        const input = document.getElementById("appUrlInput");
+  function openRetconFlow() {
+    const appUrl = getSavedAppUrl();
 
-        input.value = getSavedAppUrl();
-        panel.classList.toggle("active");
+    if (!appUrl) {
+      setStatus("Paste your Retcon Flow app link first.");
+      document.getElementById("setupPanel").classList.add("active");
+      document.getElementById("appUrlInput").focus();
+      return;
+    }
 
-        if (panel.classList.contains("active")) {
-          input.focus();
-        }
-      }
+    if (appUrl.indexOf("/exec") === -1) {
+      setStatus("That does not look like a published /exec Web App URL.");
+      document.getElementById("setupPanel").classList.add("active");
+      return;
+    }
 
-      function saveAppUrl() {
-        const input = document.getElementById("appUrlInput");
-        const url = String(input.value || "").trim();
+    setStatus("Opening Retcon Flow...");
+    window.location.href = getOpenUrl(appUrl);
+  }
 
-        if (!url) {
-          setStatus("Paste your Retcon Flow app link first.");
-          return;
-        }
+  function toggleSetup() {
+    const panel = document.getElementById("setupPanel");
+    const input = document.getElementById("appUrlInput");
 
-        if (url.indexOf("/exec") === -1) {
-          setStatus("Use the published Web App URL ending in /exec.");
-          return;
-        }
+    input.value = getSavedAppUrl();
+    panel.classList.toggle("active");
 
-        localStorage.setItem(STORAGE_KEY, url);
-        setStatus("App link saved. Opening Retcon Flow...");
-        setTimeout(openRetconFlow, 500);
-      }
+    if (panel.classList.contains("active")) {
+      input.focus();
+    }
+  }
 
-      function clearAppUrl() {
-        localStorage.removeItem(STORAGE_KEY);
-        document.getElementById("appUrlInput").value = "";
-        setStatus("Saved app link cleared.");
-      }
+  function saveAppUrl() {
+    const input = document.getElementById("appUrlInput");
+    const url = String(input.value || "").trim();
+    const mode = getLauncherMode();
 
-      function registerServiceWorker() {
-        if (!("serviceWorker" in navigator)) {
-          return;
-        }
+    if (!url) {
+      setStatus("Paste your Retcon Flow app link first.");
+      return;
+    }
 
-        navigator.serviceWorker.register("./service-worker.js").catch(function() {
-          // The launcher still works without this.
-        });
-      }
+    if (url.indexOf("/exec") === -1) {
+      setStatus("Use the published Web App URL ending in /exec.");
+      return;
+    }
 
-      function autoOpenIfConfigured() {
-        const appUrl = getSavedAppUrl();
+    localStorage.setItem(STORAGE_KEY, url);
 
-        if (!appUrl) {
-          setStatus("Set your Retcon Flow app link to begin.");
-          document.getElementById("setupPanel").classList.add("active");
-          return;
-        }
+    if (mode === "install") {
+      setStatus("App link saved. Now add THIS launcher page to your home screen.");
+      return;
+    }
 
-        setStatus("Opening Retcon Flow...");
-        setTimeout(openRetconFlow, CONFIG.autoOpenDelayMs || 700);
-      }
+    setStatus("App link saved. Opening Retcon Flow...");
+    setTimeout(openRetconFlow, 500);
+  }
 
-      document.getElementById("footer").textContent =
-        "Retcon Flow Launcher · " + (CONFIG.launcherVersion || "dev");
+  function clearAppUrl() {
+    localStorage.removeItem(STORAGE_KEY);
+    document.getElementById("appUrlInput").value = "";
+    setStatus("Saved app link cleared.");
+  }
 
-      registerServiceWorker();
-      autoOpenIfConfigured();
-    </script>
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) {
+      return;
+    }
+
+    navigator.serviceWorker.register("./service-worker.js?v=2").catch(function() {
+      // The launcher still works without this.
+    });
+  }
+
+  function autoOpenIfConfigured() {
+    const mode = getLauncherMode();
+    const appUrl = getSavedAppUrl();
+
+    if (mode === "install") {
+      setStatus("Install Retcon Flow from this page. Do not open the budget app yet.");
+      document.getElementById("setupPanel").classList.add("active");
+      document.getElementById("appUrlInput").value = appUrl;
+      return;
+    }
+
+    if (!appUrl) {
+      setStatus("Set your Retcon Flow app link to begin.");
+      document.getElementById("setupPanel").classList.add("active");
+      return;
+    }
+
+    setStatus("Opening Retcon Flow...");
+    setTimeout(openRetconFlow, CONFIG.autoOpenDelayMs || 700);
+  }
+
+  document.getElementById("footer").textContent =
+    "Retcon Flow Launcher · " + (CONFIG.launcherVersion || "dev");
+
+  registerServiceWorker();
+  autoOpenIfConfigured();
+</script>
   </body>
 </html>
